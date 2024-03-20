@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+service ArchivoService {
+  rpc EnviarChunk(ArchivoChunk) returns (Respuesta) {}
+  rpc ArchivoTerminado(Estado) returns (google.protobuf.Empty) {}
+}
+
+message ArchivoChunk {
+    bytes contenido = 1;
+}
+  
+
+message Respuesta {
+  string mensaje = 1;
+}
+
+message Estado {
+  bool terminado = 1;
+}
