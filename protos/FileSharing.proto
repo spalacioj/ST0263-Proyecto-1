@@ -9,6 +9,7 @@ service ArchivoService {
 
 message ArchivoChunk {
     bytes contenido = 1;
+    string fileInfo = 2;
 }
   
 
@@ -18,4 +19,5 @@ message Respuesta {
 
 message Estado {
   bool terminado = 1;
+  string fileExtension = 2;
 }
