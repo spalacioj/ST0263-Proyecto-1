@@ -3,12 +3,17 @@ syntax = "proto3";
 import "google/protobuf/empty.proto";
 
 service ArchivoService {
-  rpc EnviarChunk(ArchivoChunk) returns (Respuesta) {}
+  rpc EnviarArchivo(Archivo) returns (Respuesta) {}
   rpc ArchivoTerminado(Estado) returns (google.protobuf.Empty) {}
+  rpc HeartBeat(Nombre) returns (Respuesta) {}
 }
 
-message ArchivoChunk {
-    bytes contenido = 1;
+message Nombre {
+  string nombre = 1;
+}
+
+message Archivo{
+    repeated bytes contenido = 1;
     string fileInfo = 2;
 }
   
