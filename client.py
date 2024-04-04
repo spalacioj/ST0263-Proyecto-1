@@ -3,10 +3,11 @@ import grpc
 import FileSharing_pb2
 import FileSharing_pb2_grpc
 
-def Create(file_location, chunks, file_size):
+def Create(file_location, chunks):
     # Establecer conexión con el servidor gRPC
     fileExtension = os.path.splitext(file_location)[1]
     fileName = os.path.splitext(os.path.basename(file_location))[0]
+    fileSize = os.path.getsize(file_location)
     with grpc.insecure_channel('localhost:50051',options=[
         ('grpc.max_send_message_length', 100 * 1024 * 1024),
         ('grpc.max_receive_message_length', 100 * 1024 * 1024)
@@ -15,7 +16,8 @@ def Create(file_location, chunks, file_size):
         # Crear un stub para el servicio ArchivoService
         stub = FileSharing_pb2_grpc.ArchivoServiceStub(channel) 
         fileInfo = f'{fileName}{fileExtension}'
-        chunkSize = int(file_size // chunks) + 1 # Le sumamos un 1 porque para leer el archivo usamos valores exactos y asi el archivo no quedara incompleto
+        chunkBytes = chunks * 1024 * 1024
+        chunkSize = (fileSize // chunkBytes) + 1 # Le sumamos un 1 porque para leer el archivo usamos valores exactos y asi el archivo no quedara incompleto
         chunkSize = chunkSize * 1024 * 1024
 
         ArrayChunks = ObtenerChunks(file_location, chunkSize, chunks) 
@@ -42,7 +44,7 @@ def ObtenerChunks(file_location, chunkSize, numberOfChunks):
         
 def main():
     file_location = './testFiles/image.jpg'  
-    Create(file_location,4,9.7)
+    Create(file_location,4)
 
 if __name__ == '__main__':
     main()
