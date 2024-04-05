@@ -2,6 +2,8 @@ import os
 import grpc
 import FileSharing_pb2
 import FileSharing_pb2_grpc
+import time
+import google.protobuf.empty_pb2 as empty_pb2
 
 def Create(file_location, chunks):
     # Establecer conexión con el servidor gRPC
@@ -15,7 +17,7 @@ def Create(file_location, chunks):
         
         # Crear un stub para el servicio ArchivoService
         stub = FileSharing_pb2_grpc.ArchivoServiceStub(channel) 
-        fileInfo = f'{fileName}{fileExtension}'
+        
         chunkBytes = chunks * 1024 * 1024
         chunkSize = (fileSize // chunkBytes) + 1 # Le sumamos un 1 porque para leer el archivo usamos valores exactos y asi el archivo no quedara incompleto
         chunkSize = chunkSize * 1024 * 1024
@@ -23,7 +25,8 @@ def Create(file_location, chunks):
         ArrayChunks = ObtenerChunks(file_location, chunkSize, chunks) 
         response = stub.EnviarArchivo(FileSharing_pb2.Archivo(
             contenido=ArrayChunks,
-            fileInfo=fileInfo
+            fileName=fileName,
+            fileExt=fileExtension
         ))     
 
         print(response.mensaje)
@@ -41,10 +44,33 @@ def ObtenerChunks(file_location, chunkSize, numberOfChunks):
             chunks.append(chunk)
     return chunks
         
+
+def ListChunks():
+    with grpc.insecure_channel('localhost:50051',options=[
+        ('grpc.max_send_message_length', 100 * 1024 * 1024),
+        ('grpc.max_receive_message_length', 100 * 1024 * 1024)
+    ]) as channel:
+        stub = FileSharing_pb2_grpc.ArchivoServiceStub(channel)
+        response = stub.chunksArchivo(empty_pb2.Empty())
+        file_dict = dict(zip(response.keys, response.values))
+        print(file_dict)
         
+def SimpleList():
+    with grpc.insecure_channel('localhost:50051',options=[
+        ('grpc.max_send_message_length', 100 * 1024 * 1024),
+        ('grpc.max_receive_message_length', 100 * 1024 * 1024)
+    ]) as channel:
+        stub = FileSharing_pb2_grpc.ArchivoServiceStub(channel)
+        response = stub.ListarArchivos(empty_pb2.Empty())
+        
+        print(response.archivos)
+
 def main():
     file_location = './testFiles/image.jpg'  
     Create(file_location,4)
+    time.sleep(3)
+    SimpleList()
 
 if __name__ == '__main__':
     main()
+

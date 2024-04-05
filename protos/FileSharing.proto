@@ -4,7 +4,8 @@ import "google/protobuf/empty.proto";
 
 service ArchivoService {
   rpc EnviarArchivo(Archivo) returns (Respuesta) {}
-  rpc ArchivoTerminado(Estado) returns (google.protobuf.Empty) {}
+  rpc chunksArchivo(google.protobuf.Empty) returns (ListaChunks) {}
+  rpc ListarArchivos(google.protobuf.Empty) returns (Lista) {}
   rpc HeartBeat(Nombre) returns (Respuesta) {}
 }
 
@@ -14,7 +15,8 @@ message Nombre {
 
 message Archivo{
     repeated bytes contenido = 1;
-    string fileInfo = 2;
+    string fileName = 2;
+    string fileExt = 3;
 }
   
 
@@ -22,7 +24,11 @@ message Respuesta {
   string mensaje = 1;
 }
 
-message Estado {
-  bool terminado = 1;
-  string fileExtension = 2;
+message ListaChunks {
+  repeated string keys = 1;
+  repeated string values = 2;
+}
+
+message Lista {
+  repeated string archivos = 1;
 }
