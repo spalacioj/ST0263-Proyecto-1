@@ -7,6 +7,8 @@ import DataNode_pb2_grpc
 import time
 import google.protobuf.empty_pb2 as empty_pb2
 
+
+
 def Create(file_location, chunks):
     # Establecer conexión con el servidor gRPC
     fileExtension = os.path.splitext(file_location)[1]
@@ -66,6 +68,7 @@ def SimpleList():
         response = stub.ListarArchivos(empty_pb2.Empty())
         
         print(response.archivos)
+        return str(response.archivos)
 
 def Download(fileName):
     contenido = b''
@@ -92,8 +95,46 @@ def Download(fileName):
         f.write(contenido)
         print('Archivo descargado')
     
+from flask import Flask, jsonify, request
 
-def main():
+app = Flask(__name__)
+
+@app.route('/createRuta',methods=['POST'])
+def createRuta():
+    body = request.json
+    
+    nombreArchivo = body['archivo']
+    chunks = body["chunks"]
+    ruta = f'./testFiles/{nombreArchivo}'
+    try:
+        with open(ruta,'rb') as f:
+            Create(ruta, int(chunks))
+            print("lei el archivo")
+            return jsonify({"message": "archivo subido"})
+    except Exception as e:
+        print("no lei el archivo")
+        print(e)
+        return jsonify({"message": "No pude leer el archivo"})
+
+@app.route('/listar')
+def listar():
+    res = SimpleList()
+    return jsonify({"Lista de archivos": res})
+
+@app.route("/descargar/<string:name>")
+def descargar(name):
+    try:
+        Download(name)
+        return jsonify({"message": "Archivo descargado"})
+    except:
+        return jsonify({"error":"El archivo no existe"})
+
+
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
+
+""" def main():
     file_location = './testFiles/hola.mp4'  
     Create(file_location,3)
     time.sleep(3)
@@ -102,5 +143,5 @@ def main():
     #Download('image.jpg')
 
 if __name__ == '__main__':
-    main()
+    main() """
 
