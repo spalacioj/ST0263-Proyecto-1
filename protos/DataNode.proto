@@ -3,11 +3,11 @@ syntax = "proto3";
 import "google/protobuf/empty.proto";
 
 service DataService {
-    rpc EnviarParticion(NombreDataNode) returns (Particion) {}
+    rpc EnviarParticion(NombreChunk) returns (Particion) {}
     rpc RecibirParticion(Particion) returns (google.protobuf.Empty) {}
 }
 
-message NombreDataNode {
+message NombreChunk {
     string nombre = 1;
 }
 

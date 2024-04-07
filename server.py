@@ -24,9 +24,10 @@ print(listaDataNodes)
 
 class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
     def __init__(self):
-        self.chunkDict = {}
-        self.listFiles = {}
-        self.SimpleList = []
+        self.chunkDict = {} #guarda el nombre del chunk con el contenido para enviarlo al datanode
+        self.listFiles = {} #guarda el nombre del chunk y en que datanode se encuentra
+        self.SimpleList = [] #guarda los archivos disponibles
+        self.dictList = [] # guarda un array con los dicts de cada archivo
         
         
     def EnviarArchivo(self, request, context):
@@ -42,13 +43,12 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
                 active_datanodes.append(ip)
         for i, (chunk_name, chunk) in enumerate(self.chunkDict.items()):
             datanode_ip = active_datanodes[i % len(active_datanodes)]
-            
+            0
             node_name = None
             for name, ip in NameDataNodes.items():
                 if ip == datanode_ip:
                     node_name = name
                     break
-            
             self.listFiles[chunk_name] = node_name
 
             with grpc.insecure_channel(datanode_ip,options=[
@@ -60,14 +60,20 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
                     contenido=chunk,
                     fileInfo=chunk_name
                 ))
+        
         print("Todos los chunks fueron enviados")
         print(self.listFiles)
+        self.DownloadDict()
+        print(self.dictList)
         return FileSharing_pb2.Respuesta(mensaje="Chunk recibido exitosamente")
            
     def chunksArchivo(self, request, context):
         keysArray = list(self.listFiles.keys())
         valuesArray = list(self.listFiles.values())
-        return FileSharing_pb2.ListaChunks(keys=keysArray, values=valuesArray)
+        return FileSharing_pb2.Dict(
+            keys=keysArray, 
+            values=valuesArray
+            )
     
     def ListarArchivos(self, request, context):
         return FileSharing_pb2.Lista(archivos=self.SimpleList)
@@ -77,6 +83,17 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
         print(nombreNode)
         return FileSharing_pb2.Respuesta(mensaje="Heartbeat recibido")
     
+    def descargarArchivo(self, request, context):
+        FileName = request.nombre
+        diccionario = self.EncontrarDict(FileName)
+        keysArray = list(diccionario.keys())
+        valuesArray = list(diccionario.values())
+        return FileSharing_pb2.Dict(
+            keys=keysArray, 
+            values=valuesArray
+            )
+
+    #metodos que no son de grpc pero ayudan para no tener tanto codigo en el mismo metodo
     def crearDictFile(self, fileName,  fileExt ,arrayOfChunks):
         contador = 1
         for chunk in arrayOfChunks:
@@ -84,6 +101,19 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
             self.chunkDict[dictKey] = chunk
             self.listFiles[dictKey] = ''
             contador += 1
+
+    def DownloadDict(self):
+        for key, value in self.listFiles.items():
+            self.listFiles[key] = NameDataNodes[value]
+        self.dictList.append(self.listFiles)
+        self.listFiles = {}
+
+    def EncontrarDict(self, file):
+        for indice, diccionario in enumerate(self.dictList):
+            for clave in diccionario.keys():
+                FileWithoutExt, Ext = file.split(".")
+                if FileWithoutExt in clave and Ext in clave:
+                    return diccionario
 
     
 

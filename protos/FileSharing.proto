@@ -4,9 +4,10 @@ import "google/protobuf/empty.proto";
 
 service ArchivoService {
   rpc EnviarArchivo(Archivo) returns (Respuesta) {}
-  rpc chunksArchivo(google.protobuf.Empty) returns (ListaChunks) {}
+  rpc chunksArchivo(google.protobuf.Empty) returns (Dict) {}
   rpc ListarArchivos(google.protobuf.Empty) returns (Lista) {}
   rpc HeartBeat(Nombre) returns (Respuesta) {}
+  rpc descargarArchivo(Nombre) returns (Dict) {}
 }
 
 message Nombre {
@@ -24,7 +25,7 @@ message Respuesta {
   string mensaje = 1;
 }
 
-message ListaChunks {
+message Dict {
   repeated string keys = 1;
   repeated string values = 2;
 }

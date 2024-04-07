@@ -14,7 +14,12 @@ class DataService(DataNode_pb2_grpc.DataServiceServicer):
         self.listaArchivos = {}
         
     def EnviarParticion(self, request, context):
-        pass
+        fileName = request.nombre
+        contenido = self.listaArchivos[fileName]
+        return DataNode_pb2.Particion(
+            contenido=contenido,
+            fileInfo=""
+        )
 
     def RecibirParticion(self, request, context):
         nombre = request.fileInfo

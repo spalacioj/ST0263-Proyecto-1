@@ -2,6 +2,8 @@ import os
 import grpc
 import FileSharing_pb2
 import FileSharing_pb2_grpc
+import DataNode_pb2
+import DataNode_pb2_grpc
 import time
 import google.protobuf.empty_pb2 as empty_pb2
 
@@ -65,11 +67,39 @@ def SimpleList():
         
         print(response.archivos)
 
+def Download(fileName):
+    contenido = b''
+    with grpc.insecure_channel('localhost:50051',options=[
+        ('grpc.max_send_message_length', 100 * 1024 * 1024),
+        ('grpc.max_receive_message_length', 100 * 1024 * 1024)
+    ]) as channel:
+        stub = FileSharing_pb2_grpc.ArchivoServiceStub(channel)
+        response = stub.descargarArchivo(FileSharing_pb2.Nombre(
+            nombre=fileName
+        ))
+        file_dict = dict(zip(response.keys, response.values))
+    for chunkName, ip in file_dict.items():
+        with grpc.insecure_channel(ip,options=[
+            ('grpc.max_send_message_length', 100 * 1024 * 1024),
+            ('grpc.max_receive_message_length', 100 * 1024 * 1024)
+        ]) as channel:
+            stub = DataNode_pb2_grpc.DataServiceStub(channel)
+            response = stub.EnviarParticion(DataNode_pb2.NombreChunk(
+                nombre=chunkName
+            ))
+            contenido += response.contenido
+    with open(fileName, 'wb') as f:
+        f.write(contenido)
+        print('Archivo descargado')
+    
+
 def main():
     file_location = './testFiles/image.jpg'  
     Create(file_location,4)
     time.sleep(3)
     SimpleList()
+    time.sleep(3)
+    Download('image.jpg')
 
 if __name__ == '__main__':
     main()
