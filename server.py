@@ -37,10 +37,11 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
         Name = f'{fileName}{fileExt}'
         self.SimpleList.append(Name) 
         self.crearDictFile(fileName, fileExt, contenido)
-        active_datanodes = []
+        """ active_datanodes = []
         for ip, active in listaDataNodes.items():
             if active:
-                active_datanodes.append(ip)
+                active_datanodes.append(ip) """
+        active_datanodes = self.Heartbeat()
         for i, (chunk_name, chunk) in enumerate(self.chunkDict.items()):
             datanode_ip = active_datanodes[i % len(active_datanodes)]
             0
@@ -78,10 +79,26 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
     def ListarArchivos(self, request, context):
         return FileSharing_pb2.Lista(archivos=self.SimpleList)
 
-    def Heartbeat(self, request, context):
-        nombreNode = request.nombre
-        print(nombreNode)
-        return FileSharing_pb2.Respuesta(mensaje="Heartbeat recibido")
+    def Heartbeat(self):
+        dataNodeSize = []
+        for ip in listaDataNodes.keys():
+            try:
+                with grpc.insecure_channel(ip,options=[
+                ('grpc.max_send_message_length', 100 * 1024 * 1024),
+                ('grpc.max_receive_message_length', 100 * 1024 * 1024)
+                ]) as channel:
+                    stub = DataNode_pb2_grpc.DataServiceStub(channel)
+                    response = stub.heartBeat(empty_pb2.Empty())
+                    size = response.cantidadChunks
+                    dataNodeSize.append((ip, size))
+            except:
+                listaDataNodes[ip] = False
+
+        data_nodes_sizes_sorted = sorted(dataNodeSize, key=lambda x: x[1])
+        sortedIPs = []
+        for ip, size in data_nodes_sizes_sorted:
+            sortedIPs.append(ip)
+        return sortedIPs
     
     def descargarArchivo(self, request, context):
         FileName = request.nombre
@@ -95,6 +112,7 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
 
     #metodos que no son de grpc pero ayudan para no tener tanto codigo en el mismo metodo
     def crearDictFile(self, fileName,  fileExt ,arrayOfChunks):
+        self.chunkDict = {}
         contador = 1
         for chunk in arrayOfChunks:
             dictKey = f'{fileName}_C{contador}{fileExt}'
@@ -109,7 +127,7 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
         self.listFiles = {}
 
     def EncontrarDict(self, file):
-        for indice, diccionario in enumerate(self.dictList):
+        for diccionario in self.dictList:
             for clave in diccionario.keys():
                 FileWithoutExt, Ext = file.split(".")
                 if FileWithoutExt in clave and Ext in clave:

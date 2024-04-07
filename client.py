@@ -94,12 +94,12 @@ def Download(fileName):
     
 
 def main():
-    file_location = './testFiles/image.jpg'  
-    Create(file_location,4)
+    file_location = './testFiles/hola.mp4'  
+    Create(file_location,3)
     time.sleep(3)
     SimpleList()
-    time.sleep(3)
-    Download('image.jpg')
+    #time.sleep(3)
+    #Download('image.jpg')
 
 if __name__ == '__main__':
     main()

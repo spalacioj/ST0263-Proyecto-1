@@ -28,6 +28,14 @@ class DataService(DataNode_pb2_grpc.DataServiceServicer):
         print('Chunk recibido')
         print(self.listaArchivos.keys())
         return empty_pb2.Empty()
+    
+    def heartBeat(self, request, context):
+        mensaje = "Datanode Funcionando!"
+        size = len(self.listaArchivos)
+        return DataNode_pb2.InfoDataNode(
+            mensaje=mensaje,
+            cantidadChunks=size
+        )
 
 
 

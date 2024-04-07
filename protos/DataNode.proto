@@ -5,6 +5,7 @@ import "google/protobuf/empty.proto";
 service DataService {
     rpc EnviarParticion(NombreChunk) returns (Particion) {}
     rpc RecibirParticion(Particion) returns (google.protobuf.Empty) {}
+    rpc heartBeat(google.protobuf.Empty) returns (InfoDataNode) {}
 }
 
 message NombreChunk {
@@ -14,4 +15,9 @@ message NombreChunk {
 message Particion {
     bytes contenido = 1;
     string fileInfo = 2;
+}
+
+message InfoDataNode {
+    string mensaje = 1;
+    int32 cantidadChunks = 2;
 }
