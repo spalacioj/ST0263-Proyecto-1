@@ -6,6 +6,7 @@ import DataNode_pb2
 import DataNode_pb2_grpc
 import time
 import google.protobuf.empty_pb2 as empty_pb2
+from flask import Flask, jsonify, request
 
 
 
@@ -94,8 +95,6 @@ def Download(fileName):
     with open(fileName, 'wb') as f:
         f.write(contenido)
         print('Archivo descargado')
-    
-from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
@@ -134,14 +133,4 @@ def descargar(name):
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
 
-""" def main():
-    file_location = './testFiles/hola.mp4'  
-    Create(file_location,3)
-    time.sleep(3)
-    SimpleList()
-    #time.sleep(3)
-    #Download('image.jpg')
-
-if __name__ == '__main__':
-    main() """
 

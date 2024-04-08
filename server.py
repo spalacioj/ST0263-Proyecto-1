@@ -37,10 +37,6 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
         Name = f'{fileName}{fileExt}'
         self.SimpleList.append(Name) 
         self.crearDictFile(fileName, fileExt, contenido)
-        """ active_datanodes = []
-        for ip, active in listaDataNodes.items():
-            if active:
-                active_datanodes.append(ip) """
         active_datanodes = self.Heartbeat()
         for i, (chunk_name, chunk) in enumerate(self.chunkDict.items()):
             datanode_ip = active_datanodes[i % len(active_datanodes)]
@@ -55,6 +51,18 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
             with grpc.insecure_channel(datanode_ip,options=[
             ('grpc.max_send_message_length', 100 * 1024 * 1024),
             ('grpc.max_receive_message_length', 100 * 1024 * 1024)
+            ]) as channel:
+                stub = DataNode_pb2_grpc.DataServiceStub(channel)
+                response = stub.RecibirParticion(DataNode_pb2.Particion(
+                    contenido=chunk,
+                    fileInfo=chunk_name
+                ))
+
+            #Enviar al nodo siguiente una replica
+            nexDataNodeIP = active_datanodes[(i + 1) % len(active_datanodes)]
+            with grpc.insecure_channel(nexDataNodeIP,options=[
+                ('grpc.max_send_message_length', 100 * 1024 * 1024),
+                ('grpc.max_receive_message_length', 100 * 1024 * 1024)
             ]) as channel:
                 stub = DataNode_pb2_grpc.DataServiceStub(channel)
                 response = stub.RecibirParticion(DataNode_pb2.Particion(
