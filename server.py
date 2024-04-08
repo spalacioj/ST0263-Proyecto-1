@@ -28,6 +28,7 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
         self.listFiles = {} #guarda el nombre del chunk y en que datanode se encuentra
         self.SimpleList = [] #guarda los archivos disponibles
         self.dictList = [] # guarda un array con los dicts de cada archivo
+        self.replicaList = [] #guarda un array con los dicts de replica de cada archivo
         
         
     def EnviarArchivo(self, request, context):
@@ -38,6 +39,7 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
         self.SimpleList.append(Name) 
         self.crearDictFile(fileName, fileExt, contenido)
         active_datanodes = self.Heartbeat()
+        tempDict = {}
         for i, (chunk_name, chunk) in enumerate(self.chunkDict.items()):
             datanode_ip = active_datanodes[i % len(active_datanodes)]
             0
@@ -69,11 +71,15 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
                     contenido=chunk,
                     fileInfo=chunk_name
                 ))
-        
+            tempDict[chunk_name] = nexDataNodeIP
+        self.replicaList.append(tempDict)
         print("Todos los chunks fueron enviados")
         print(self.listFiles)
         self.DownloadDict()
+        print('principal download dict')
         print(self.dictList)
+        print('Replica downlaod dict')
+        print(self.replicaList)
         return FileSharing_pb2.Respuesta(mensaje="Chunk recibido exitosamente")
            
     def chunksArchivo(self, request, context):
@@ -111,12 +117,26 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
     def descargarArchivo(self, request, context):
         FileName = request.nombre
         diccionario = self.EncontrarDict(FileName)
-        keysArray = list(diccionario.keys())
-        valuesArray = list(diccionario.values())
-        return FileSharing_pb2.Dict(
-            keys=keysArray, 
-            values=valuesArray
-            )
+        diccionarioReplica = self.EncontrarDictReplica(FileName)
+        activeIPs = self.Heartbeat()
+        if(len(activeIPs) == 3):
+            keysArray = list(diccionario.keys())
+            valuesArray = list(diccionario.values())
+            return FileSharing_pb2.Dict(
+                keys=keysArray, 
+                values=valuesArray
+                )
+        else:
+            for name, ip in diccionario.items():
+                if ip not in activeIPs:
+                    ipReplica = diccionarioReplica[name]
+                    diccionario[name] = ipReplica
+            keysArray = list(diccionario.keys())
+            valuesArray = list(diccionario.values())
+            return FileSharing_pb2.Dict(
+                keys=keysArray, 
+                values=valuesArray
+                )
 
     #metodos que no son de grpc pero ayudan para no tener tanto codigo en el mismo metodo
     def crearDictFile(self, fileName,  fileExt ,arrayOfChunks):
@@ -136,6 +156,13 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
 
     def EncontrarDict(self, file):
         for diccionario in self.dictList:
+            for clave in diccionario.keys():
+                FileWithoutExt, Ext = file.split(".")
+                if FileWithoutExt in clave and Ext in clave:
+                    return diccionario
+    
+    def EncontrarDictReplica(self, file):
+        for diccionario in self.replicaList:
             for clave in diccionario.keys():
                 FileWithoutExt, Ext = file.split(".")
                 if FileWithoutExt in clave and Ext in clave:
