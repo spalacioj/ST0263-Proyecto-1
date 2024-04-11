@@ -29,6 +29,7 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
         self.SimpleList = [] #guarda los archivos disponibles
         self.dictList = [] # guarda un array con los dicts de cada archivo
         self.replicaList = [] #guarda un array con los dicts de replica de cada archivo
+        self.ipsDisponibles = [os.environ['DATA_NODE_1'], os.environ['DATA_NODE_2'], os.environ['DATA_NODE_3']]
         
         
     def EnviarArchivo(self, request, context):
@@ -78,7 +79,7 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
         self.DownloadDict()
         print('principal download dict')
         print(self.dictList)
-        print('Replica downlaod dict')
+        print('Replica download dict')
         print(self.replicaList)
         return FileSharing_pb2.Respuesta(mensaje="Chunk recibido exitosamente")
            
@@ -107,11 +108,14 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
                     dataNodeSize.append((ip, size))
             except:
                 listaDataNodes[ip] = False
+                self.replicarChunks(ip)
+                        
 
         data_nodes_sizes_sorted = sorted(dataNodeSize, key=lambda x: x[1])
         sortedIPs = []
         for ip, size in data_nodes_sizes_sorted:
             sortedIPs.append(ip)
+        print(sortedIPs)
         return sortedIPs
     
     def descargarArchivo(self, request, context):
@@ -168,6 +172,69 @@ class ArchivoService(FileSharing_pb2_grpc.ArchivoServiceServicer):
                 if FileWithoutExt in clave and Ext in clave:
                     return diccionario
 
+    def replicarChunks(self, ip):
+    # Recorrer el diccionario principal para buscar qué chunks tienen la IP del datanode caído
+        chunk_sin_replica_main = []
+        chunk_sin_replica_secondary = []
+
+        for diccionario in self.dictList + self.replicaList:
+            for key, value in diccionario.items():
+                if value == ip:
+                    if diccionario in self.dictList:
+                        chunk_sin_replica_main.append(key)
+                    else:
+                        chunk_sin_replica_secondary.append(key)
+
+        for chunk in chunk_sin_replica_main:
+            indice = self.ipsDisponibles.index(ip)
+            nueva_posicion = (indice + 2) % len(self.ipsDisponibles)
+            siguiente_ip = self.ipsDisponibles[nueva_posicion]
+            ipChunkSecundario = self.buscarIP(chunk, 1)
+            for diccionario in self.dictList:
+                for key, value in diccionario.items():
+                    if key == chunk:
+                        diccionario[key] = siguiente_ip
+            with grpc.insecure_channel(ipChunkSecundario,options=[
+                ('grpc.max_send_message_length', 100 * 1024 * 1024),
+                ('grpc.max_receive_message_length', 100 * 1024 * 1024)
+            ]) as channel:
+                stub = DataNode_pb2_grpc.DataServiceStub(channel)
+                stub.Replicar(DataNode_pb2.InfoReplicar(
+                    ipReplicar=siguiente_ip,
+                    nombre=chunk
+                ))
+            #se hace la conexion grpc con esta ip y se le pasa el nombre del chunk y la ip de a donde debe enviarlo, definir el metodo en grpc 
+                    
+
+        for chunk in chunk_sin_replica_secondary:
+            indice = self.ipsDisponibles.index(ip)
+            nueva_posicion = (indice + 1) % len(self.ipsDisponibles)
+            siguiente_ip = self.ipsDisponibles[nueva_posicion]
+            ipChunkPrincipal = self.buscarIP(chunk, 2)
+            for diccionario in self.replicaList:
+                for key, value in diccionario.items():
+                    if key == chunk:
+                        diccionario[key] = siguiente_ip 
+            with grpc.insecure_channel(ipChunkPrincipal,options=[
+                ('grpc.max_send_message_length', 100 * 1024 * 1024),
+                ('grpc.max_receive_message_length', 100 * 1024 * 1024)
+            ]) as channel:
+                stub = DataNode_pb2_grpc.DataServiceStub(channel)
+                stub.Replicar(DataNode_pb2.InfoReplicar(
+                    ipReplicar=siguiente_ip,
+                    nombre=chunk
+                ))
+        
+
+    def buscarIP(self, chunkName, dictType):
+        if dictType == 1:
+            for diccionario in self.replicaList:
+                if chunkName in diccionario:
+                    return diccionario[chunkName]
+        else: 
+            for diccionario in self.dictList:
+                if chunkName in diccionario:
+                    return diccionario[chunkName]
     
 
 def iniciar_servidor():

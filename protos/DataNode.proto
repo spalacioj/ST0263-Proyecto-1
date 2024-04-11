@@ -6,6 +6,7 @@ service DataService {
     rpc EnviarParticion(NombreChunk) returns (Particion) {}
     rpc RecibirParticion(Particion) returns (google.protobuf.Empty) {}
     rpc heartBeat(google.protobuf.Empty) returns (InfoDataNode) {}
+    rpc Replicar(InfoReplicar) returns (google.protobuf.Empty) {}
 }
 
 message NombreChunk {
@@ -20,4 +21,9 @@ message Particion {
 message InfoDataNode {
     string mensaje = 1;
     int32 cantidadChunks = 2;
+}
+
+message InfoReplicar {
+    string ipReplicar = 1;
+    string nombre = 2;
 }
