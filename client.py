@@ -73,6 +73,7 @@ def SimpleList():
 
 def Download(fileName):
     contenido = b''
+    
     with grpc.insecure_channel('localhost:50051',options=[
         ('grpc.max_send_message_length', 100 * 1024 * 1024),
         ('grpc.max_receive_message_length', 100 * 1024 * 1024)
@@ -81,7 +82,9 @@ def Download(fileName):
         response = stub.descargarArchivo(FileSharing_pb2.Nombre(
             nombre=fileName
         ))
+        print(response)
         file_dict = dict(zip(response.keys, response.values))
+        
     for chunkName, ip in file_dict.items():
         with grpc.insecure_channel(ip,options=[
             ('grpc.max_send_message_length', 100 * 1024 * 1024),
@@ -125,7 +128,8 @@ def descargar(name):
     try:
         Download(name)
         return jsonify({"message": "Archivo descargado"})
-    except:
+    except Exception as e:
+        print(e)    
         return jsonify({"error":"El archivo no existe"})
 
 

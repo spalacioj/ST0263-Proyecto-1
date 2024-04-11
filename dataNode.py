@@ -36,6 +36,22 @@ class DataService(DataNode_pb2_grpc.DataServiceServicer):
             mensaje=mensaje,
             cantidadChunks=size
         )
+    
+    def Replicar(self, request, context):
+        ip = request.ipReplicar
+        nombreChunk = request.nombre
+        contenido = self.listaArchivos[nombreChunk]
+        with grpc.insecure_channel(ip,options=[
+            ('grpc.max_send_message_length', 100 * 1024 * 1024),
+            ('grpc.max_receive_message_length', 100 * 1024 * 1024)
+        ]) as channel:
+            stub = DataNode_pb2_grpc.DataServiceStub(channel)
+            stub.RecibirParticion(DataNode_pb2.Particion(
+                contenido=contenido,
+                fileInfo=nombreChunk
+            ))
+        return empty_pb2.Empty()
+
 
 
 
